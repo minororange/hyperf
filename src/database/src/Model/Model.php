@@ -122,6 +122,11 @@ abstract class Model implements ArrayAccess, Arrayable, Jsonable, JsonSerializab
     protected array $traitInitializers = [];
 
     /**
+     * @var bool whether to fire the retrieved event
+     */
+    protected bool $shouldFireRetrievedEvent = true;
+
+    /**
      * Create a new Model model instance.
      */
     public function __construct(array $attributes = [])
@@ -353,7 +358,7 @@ abstract class Model implements ArrayAccess, Arrayable, Jsonable, JsonSerializab
         // This method just provides a convenient way for us to generate fresh model
         // instances of this current model. It is particularly useful during the
         // hydration of new objects via the Model query builder instances.
-        $model = new static((array) $attributes);
+        $model = new static((array)$attributes);
 
         $model->exists = $exists;
 
@@ -377,11 +382,11 @@ abstract class Model implements ArrayAccess, Arrayable, Jsonable, JsonSerializab
     {
         $model = $this->newInstance([], true);
 
-        $model->setRawAttributes((array) $attributes, true);
+        $model->setRawAttributes((array)$attributes, true);
 
         $model->setConnection($connection ?: $this->getConnectionName());
 
-        $model->fireModelEvent('retrieved');
+        $this->shouldFireRetrievedEvent && $model->fireModelEvent('retrieved');
 
         return $model;
     }
@@ -562,7 +567,7 @@ abstract class Model implements ArrayAccess, Arrayable, Jsonable, JsonSerializab
      */
     public function update(array $attributes = [], array $options = [])
     {
-        if (! $this->exists) {
+        if (!$this->exists) {
             return false;
         }
 
@@ -575,7 +580,7 @@ abstract class Model implements ArrayAccess, Arrayable, Jsonable, JsonSerializab
      */
     public function updateOrFail(array $attributes = [], array $options = []): bool
     {
-        if (! $this->exists) {
+        if (!$this->exists) {
             return false;
         }
 
@@ -589,7 +594,7 @@ abstract class Model implements ArrayAccess, Arrayable, Jsonable, JsonSerializab
      */
     public function push()
     {
-        if (! $this->save()) {
+        if (!$this->save()) {
             return false;
         }
 
@@ -600,7 +605,7 @@ abstract class Model implements ArrayAccess, Arrayable, Jsonable, JsonSerializab
             $models = $models instanceof Collection ? $models->all() : [$models];
 
             foreach (array_filter($models) as $model) {
-                if (! $model->push()) {
+                if (!$model->push()) {
                     return false;
                 }
             }
@@ -638,7 +643,7 @@ abstract class Model implements ArrayAccess, Arrayable, Jsonable, JsonSerializab
             // which is typically an auto-increment value managed by the database.
             $saved = $this->performInsert($query);
 
-            if (! $this->getConnectionName() && $connection = $query->getConnection()) {
+            if (!$this->getConnectionName() && $connection = $query->getConnection()) {
                 $this->setConnection($connection->getName());
             }
         }
@@ -715,7 +720,7 @@ abstract class Model implements ArrayAccess, Arrayable, Jsonable, JsonSerializab
         // If the model doesn't exist, there is nothing to delete so we'll just return
         // immediately and not do anything else. Otherwise, we will continue with a
         // deletion process on the model, firing the proper events, and so forth.
-        if (! $this->exists) {
+        if (!$this->exists) {
             return;
         }
 
@@ -915,7 +920,7 @@ abstract class Model implements ArrayAccess, Arrayable, Jsonable, JsonSerializab
      */
     public function fresh($with = [])
     {
-        if (! $this->exists) {
+        if (!$this->exists) {
             return;
         }
 
@@ -932,7 +937,7 @@ abstract class Model implements ArrayAccess, Arrayable, Jsonable, JsonSerializab
      */
     public function refresh()
     {
-        if (! $this->exists) {
+        if (!$this->exists) {
             return $this;
         }
 
@@ -975,7 +980,7 @@ abstract class Model implements ArrayAccess, Arrayable, Jsonable, JsonSerializab
      */
     public function is($model)
     {
-        return ! is_null($model) && $this->getKey() === $model->getKey() && $this->getTable() === $model->getTable() && $this->getConnectionName() === $model->getConnectionName();
+        return !is_null($model) && $this->getKey() === $model->getKey() && $this->getTable() === $model->getTable() && $this->getConnectionName() === $model->getConnectionName();
     }
 
     /**
@@ -986,7 +991,7 @@ abstract class Model implements ArrayAccess, Arrayable, Jsonable, JsonSerializab
      */
     public function isNot($model)
     {
-        return ! $this->is($model);
+        return !$this->is($model);
     }
 
     /**
@@ -1211,7 +1216,7 @@ abstract class Model implements ArrayAccess, Arrayable, Jsonable, JsonSerializab
      */
     public function offsetExists(mixed $offset): bool
     {
-        return ! is_null($this->getAttribute($offset));
+        return !is_null($this->getAttribute($offset));
     }
 
     /**
@@ -1252,7 +1257,7 @@ abstract class Model implements ArrayAccess, Arrayable, Jsonable, JsonSerializab
     protected function bootIfNotBooted(): void
     {
         $booted = Booted::$container[static::class] ?? false;
-        if (! $booted) {
+        if (!$booted) {
             Booted::$container[static::class] = true;
 
             $this->fireModelEvent('booting');
@@ -1284,7 +1289,7 @@ abstract class Model implements ArrayAccess, Arrayable, Jsonable, JsonSerializab
         foreach (class_uses_recursive($class) as $trait) {
             $method = 'boot' . class_basename($trait);
 
-            if (method_exists($class, $method) && ! in_array($method, $booted)) {
+            if (method_exists($class, $method) && !in_array($method, $booted)) {
                 forward_static_call([$class, $method]);
                 $booted[] = $method;
             }
@@ -1341,7 +1346,7 @@ abstract class Model implements ArrayAccess, Arrayable, Jsonable, JsonSerializab
     {
         $query = $this->newModelQuery();
 
-        if (! $this->exists) {
+        if (!$this->exists) {
             return $query->{$method}($column, $amount, $extra);
         }
 
